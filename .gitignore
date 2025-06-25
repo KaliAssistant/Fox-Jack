@@ -1,3 +1,11 @@
+# PROJ ==========
+
+
+.release
+.unused
+.hidden
+.kaliworkingspace
+
 # Apple =============
 .DS_Store
 .AppleDouble
