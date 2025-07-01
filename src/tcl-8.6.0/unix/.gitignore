@@ -6,3 +6,5 @@ pkgs/
 tcl.pc
 tclConfig.sh
 *.o
+*.a
+tclsh
