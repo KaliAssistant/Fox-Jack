@@ -1,0 +1,6 @@
+.depend
+*.o
+hping3
+hping3-static
+*.swp
+byteorder

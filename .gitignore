@@ -5,6 +5,8 @@
 .unused
 .hidden
 .kaliworkingspace
+src/out/
+pkg/
 
 # Apple =============
 .DS_Store
