@@ -1,0 +1,8 @@
+Makefile
+config.log
+config.status
+dltest/Makefile
+pkgs/
+tcl.pc
+tclConfig.sh
+*.o
