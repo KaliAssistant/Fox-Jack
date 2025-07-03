@@ -1,0 +1,58 @@
+menu "Fox-Jack rootfs extra configuration"
+
+menu "System init services"
+
+config FJXX_INITSRV_TELNET
+    bool "telnet"
+    default n
+
+menuconfig FJXX_INITSRV_SSH
+    bool "ssh"
+    default y
+
+if FJXX_INITSRV_SSH
+
+config FJXX_SSH_AUTHKEY_LOGIN_PBK
+    string "Your SSH public key"
+    default ""
+
+config FJXX_SSH_DIS_PASSWD_LOGIN
+    bool "Disable password login"
+    default n
+    help
+      If enabled, only public key login will be allowed.
+
+comment "WARNING: Set SSH public key when password login is disabled!"
+    depends on FJXX_SSH_DIS_PASSWD_LOGIN
+
+endif
+
+config FJXX_INITSRV_SSLH
+    bool "sslh"
+    default n
+
+menuconfig FJXX_INITSRV_USB_GADGETS
+    bool "USB gadgets"
+    default y
+
+if FJXX_INITSRV_USB_GADGETS
+
+
+config FJXX_USB_GADGETS_RNDIS_IPV4_ADDR
+    string "Fox-Jack RNDIS IPV4 address"
+    default "172.32.0.70/24"
+
+config FJXX_USB_GADGETS_RNDIS_HOST_MAC
+    string "Your HOST or PC RNDIS MAC address"
+    default "48:6f:73:76:50:ff"
+
+config FJXX_USB_GADGETS_RNDIS_DEV_MAC
+    string "Fox-Jack RNDIS MAC address"
+    default "42:61:64:56:53:00"
+
+endif
+
+endmenu
+
+endmenu
+

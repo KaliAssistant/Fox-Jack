@@ -1,0 +1,28 @@
+#!/bin/sh
+
+network_init() {
+  if [ -f /etc/eth0addr ]; then
+    ifconfig eth0 down
+    ifconfig eth0 hw ether $(cat /etc/eth0addr)
+  fi
+
+  ifconfig eth0 up && udhcpc -i eth0 >/dev/null 2>&1
+}
+
+kill_dhcpc() {
+  killall udhcpc
+}
+
+
+
+case $1 in
+	start)
+		network_init
+    ;;
+	stop)
+    kill_dhcpc
+		;;
+	*)
+		exit 1
+		;;
+esac

@@ -72,14 +72,31 @@ do_build_hping() {
   cd "$REPOPWD"
   mkdir -p pkg && cd pkg
   mkdir -p hping && cd hping
-  cp -r ../../src/out/hping .
+  rsync -a ../../src/out/hping/ ./
+  rsync -a ../../src/out/tcl/ ./
   cd ..
   tar czf foxjack-hping.tar.gz -C hping .
   rm -rf hping
 }
 
+do_extra_config() {
+  [ ! -d "$REPOPWD"/src/out/extra_config ] || rm -rf "$REPOPWD"/src/out/extra_config
+
+  cd "$REPOPWD"/src/extra_config
+
+  make defconfig && make
+
+  cd "$REPOPWD"
+  mkdir -p pkg && cd pkg
+  mkdir -p extra_config && cd extra_config
+  rsync -a  ../../src/out/extra_config/ ./
+  cd ..
+  tar czf foxhack-extra-config.tar.gz -C extra_config .
+  rm -rf extra_config
+}
 
 
 do_build_hping
+do_extra_config
 
 cd "$REPOPWD"
