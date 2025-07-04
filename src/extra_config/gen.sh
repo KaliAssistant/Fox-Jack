@@ -123,6 +123,7 @@ fi
 
 disable_init_script 21appinit
 enable_init_script 21networkinit
+enable_init_script 20ws2812d
 
 echo "/etc/profile.d/RkEnv.sh" >> ../out/rmtab
 

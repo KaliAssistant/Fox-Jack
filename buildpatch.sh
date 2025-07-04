@@ -79,24 +79,40 @@ do_build_hping() {
   rm -rf hping
 }
 
+do_build_spi_ws2812() {
+  cd "$REPOPWD"/src/spi_ws2812
+  make && make install DESTDIR=$(realpath ../out/spi_ws2812)
+
+  cd "$REPOPWD"
+  mkdir -p pkg && cd pkg
+  mkdir -p spi_ws2812 && cd spi_ws2812
+  rsync -a ../../src/out/spi_ws2812/ ./
+  cd ..
+  tar czf foxjack-spi-ws2812.tar.gz -C spi_ws2812 .
+  rm -rf spi_ws2812
+}
+
+
 do_extra_config() {
   [ ! -d "$REPOPWD"/src/out/extra_config ] || rm -rf "$REPOPWD"/src/out/extra_config
 
   cd "$REPOPWD"/src/extra_config
 
-  make defconfig && make
+  [ -f .config ] || make defconfig
+  make
 
   cd "$REPOPWD"
   mkdir -p pkg && cd pkg
   mkdir -p extra_config && cd extra_config
   rsync -a  ../../src/out/extra_config/ ./
   cd ..
-  tar czf foxhack-extra-config.tar.gz -C extra_config .
+  tar czf foxjack-extra-config.tar.gz -C extra_config .
   rm -rf extra_config
 }
 
 
 do_build_hping
+do_build_spi_ws2812
 do_extra_config
 
 cd "$REPOPWD"

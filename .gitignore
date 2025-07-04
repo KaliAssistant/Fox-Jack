@@ -8,6 +8,7 @@
 src/out/
 pkg/
 workspace/
+IMAGES/
 
 # Apple =============
 .DS_Store

@@ -58,6 +58,22 @@ do_modify_rootfs() {
   echo "Completed."
 }
 
+do_out_images() {
+  mkdir -p ./IMAGES
+  rsync -a --delete ./workspace/build_imgs/ ./IMAGES
+}
+
+do_sdcard_flash() {
+  cp ./luckfox-pico/tools/linux/Linux_SD_env_flash/blkenvflash ./IMAGES
+  cd ./IMAGES
+  echo "WARNING: Check the SD card dev path! blkenvflash can overwrite your system drives!"
+  echo -n "Enter your SD card dev path... >" && read -r SD_DEV_PATH
+  if [ ! -e "$SD_DEV_PATH" ]; then
+    echo "ERROR: $SD_DEV_PATH not found."
+    return 1
+  fi
+  ./blkenvflash "$SD_DEV_PATH"
+}
 
 if [ $# -ne 0 ]; then
   case $1 in
@@ -66,6 +82,7 @@ if [ $# -ne 0 ]; then
       do_build_in_docker allsave
       do_build_pkgs
       do_modify_rootfs
+      do_out_images
       ;;
     luckfox)
       do_docker_env
@@ -77,11 +94,15 @@ if [ $# -ne 0 ]; then
       make defconfig && make menuconfig
       cd $CRDIR
       ;;
+    sdflash)
+      do_sdcard_flash
+      ;;
     *)
       echo "Usage: $0 [OPTIONS] [luckfox build.sh OPTIONS]"
       echo -e "Available options:\n"
       echo -e "luckfox [luckfox options]          luckfox pico SDK build script options"
       echo -e "foxjackconfig                      foxjack extra_config"
+      echo -e "sdflash                            Burn build images to SD card"
       echo -e "\nDefault option is 'all'."
       exit 1
   esac
@@ -90,4 +111,5 @@ else
   do_build_in_docker allsave
   do_build_pkgs
   do_modify_rootfs
+  do_out_images
 fi

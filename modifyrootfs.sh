@@ -40,8 +40,9 @@ do_modify() {
   LOOP_MOUNT_POINT=$(losetup --show -fP build_imgs/rootfs.img)
   mount $LOOP_MOUNT_POINT ./rootfs_mnt
 
-  tar xf ../pkg/foxjack-hping.tar.gz -C ./rootfs_mnt
-  tar xf ../pkg/foxhack-extra-config.tar.gz -C ./rootfs_mnt
+  for i in ../pkg/*.tar.gz; do
+    tar xf $i -C ./rootfs_mnt
+  done
 
   cd ./rootfs_mnt
 

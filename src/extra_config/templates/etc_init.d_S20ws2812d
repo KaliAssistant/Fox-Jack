@@ -1,0 +1,32 @@
+#!/bin/sh
+
+DAEMON=/usr/bin/ws2812d
+PIDFILE=/var/run/ws2812d.pid
+
+start() {
+    echo "Starting ws2812d..."
+    $DAEMON &
+    echo $! > $PIDFILE
+}
+
+stop() {
+    echo "Stopping ws2812d..."
+    if [ -f $PIDFILE ]; then
+        kill "$(cat $PIDFILE)"
+        rm -f $PIDFILE
+    fi
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+case "$1" in
+    start)   start ;;
+    stop)    stop ;;
+    restart) restart ;;
+    *) echo "Usage: $0 {start|stop|restart}" ;;
+esac
+

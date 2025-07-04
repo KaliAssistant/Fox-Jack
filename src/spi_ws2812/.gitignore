@@ -1,0 +1,4 @@
+*.bin
+*.o
+ws2812d
+shmled
