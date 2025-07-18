@@ -1,0 +1,63 @@
+#!/bin/sh
+
+set -e
+
+LOAD_NAME="g1"
+SCHEME_FILE=/etc/gt/foxjack.scheme
+
+gt_init() {
+  if [ ! -e /sys/kernel/config/usb_gadget ]; then
+    mount -t configfs none /sys/kernel/config
+    if [ ! -e /sys/kernel/config/usb_gadget/$LOAD_NAME ]; then
+      /usr/bin/gt load $SCHEME_FILE $LOAD_NAME
+      return 0
+    fi
+  fi
+  
+  UDC_CHK=$(ls /sys/class/udc)
+  if [ "$(cat /sys/kernel/config/usb_gadget/$LOAD_NAME)" != "$UDC_CHK" ]; then
+    /usr/bin/gt enable $LOAD_NAME
+    return 0
+  else
+    echo "$LOAD_NAME is already enabled." >&2
+    return 0
+  fi
+}
+
+gt_stop() {
+  if [ ! -e /sys/kernel/config/usb_gadget/$LOAD_NAME ]; then
+    echo "ConfigFS/$LOAD_NAME not found in /sys/kernel/config ! abort..." >&2
+    exit 255
+  fi
+
+  UDC_CHK=$(ls /sys/class/udc)
+  if [ "$(cat /sys/kernel/config/usb_gadget/$LOAD_NAME)" != "$UDC_CHK" ]; then
+    echo "$LOAD_NAME is already disabled." >&2
+    return 0
+  else
+    /usr/bin/gt disable $LOAD_NAME
+    return 0
+  fi
+}
+
+gt_restart() {
+  gt_stop
+  sleep 2
+  gt_init
+  return 0
+}
+
+case $1 in
+  start)
+    gt_init
+    ;;
+  stop)
+    gt_stop
+    ;;
+  restart)
+    gt_restart
+    ;;
+  *)
+    exit 1
+    ;;
+esac

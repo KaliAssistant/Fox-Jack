@@ -7,8 +7,14 @@ if [ "$EUID" -ne 0 ]
   exit 1
 fi
 
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+#IMAGE_NAME="debian:testing-backports@sha256:f9a865a60bffbfcc5ef80cbf2be85ab4d7a58ace445ea6f8ddb9049ea4c1be07"
+#CONTAINER_NAME="luckfoxpicofoxjackbuild-debian"
+
 IMAGE_NAME="luckfoxtech/luckfox_pico:1.0"
 CONTAINER_NAME="luckfoxpicofoxjackbuild"
+
 
 do_docker_env() {
   # 1. Check if the image is already pulled
@@ -42,32 +48,30 @@ do_build_in_docker() {
   # 4. Build something inside the container
   BUILD_OPT=$1
   echo "Running build commands inside container..."
-  docker exec "$CONTAINER_NAME" bash -c "cd /home && ./build.sh $1"
+#  docker exec -ti "$CONTAINER_NAME" bash -c "apt update && apt install -y wget gcc g++ gawk libtool libtool-bin automake autoconf make cmake device-tree-compiler texinfo gperf g++-multilib gcc-multilib bc dc bison pkg-config git python3-dev libncurses-dev bzip2 unzip xz-utils cpio rsync flex openssl libssl-dev"
+  docker exec -ti "$CONTAINER_NAME" bash -c "export FORCE_UNSAFE_CONFIGURE=1;cd /home && ./build.sh $1"
   echo "Completed."
 }
 
-do_build_pkgs() {
-  echo "Build the foxjack pkgs"
-  ./buildpatch.sh
-  echo "Completed."
-}
+do_extra_config() {
+  cd "$REPO_DIR"/src/extra_config
+  [ -f .config ] || make defconfig
+  make
 
-do_modify_rootfs() {
-  echo "Modify rootfs"
-  ./modifyrootfs.sh
-  echo "Completed."
+  cd "$REPO_DIR"
 }
 
 do_out_images() {
   mkdir -p ./IMAGES
-  rsync -a --delete ./workspace/build_imgs/ ./IMAGES
+  rsync -a --delete ./luckfox-pico/output/image/ ./IMAGES
+  echo "Done. run \`build.sh sdflash\` to flash images."
 }
 
 do_sdcard_flash() {
   cp ./luckfox-pico/tools/linux/Linux_SD_env_flash/blkenvflash ./IMAGES
   cd ./IMAGES
   echo "WARNING: Check the SD card dev path! blkenvflash can overwrite your system drives!"
-  echo -n "Enter your SD card dev path... >" && read -r SD_DEV_PATH
+  echo -n "Enter your SD card dev path (/dev/sxx)... >" && read -r SD_DEV_PATH
   if [ ! -e "$SD_DEV_PATH" ]; then
     echo "ERROR: $SD_DEV_PATH not found."
     return 1
@@ -79,9 +83,9 @@ if [ $# -ne 0 ]; then
   case $1 in
     all)
       do_docker_env
-      do_build_in_docker allsave
-      do_build_pkgs
-      do_modify_rootfs
+      do_build_in_docker all
+      do_extra_config
+      do_build_in_docker firmware
       do_out_images
       ;;
     luckfox)
@@ -89,10 +93,10 @@ if [ $# -ne 0 ]; then
       do_build_in_docker $2
       ;;
     foxjackconfig)
-      CRDIR=`pwd`
-      cd "$CRDIR"/src/extra_config
-      make defconfig && make menuconfig
-      cd $CRDIR
+      cd "$REPO_DIR"/src/extra_config
+      [ -f .config ] || make defconfig
+      make menuconfig
+      cd $REPO_DIR
       ;;
     sdflash)
       do_sdcard_flash
@@ -100,6 +104,7 @@ if [ $# -ne 0 ]; then
     *)
       echo "Usage: $0 [OPTIONS] [luckfox build.sh OPTIONS]"
       echo -e "Available options:\n"
+      echo -e "all                                build foxjack images and flash"
       echo -e "luckfox [luckfox options]          luckfox pico SDK build script options"
       echo -e "foxjackconfig                      foxjack extra_config"
       echo -e "sdflash                            Burn build images to SD card"
@@ -108,8 +113,9 @@ if [ $# -ne 0 ]; then
   esac
 else
   do_docker_env
-  do_build_in_docker allsave
-  do_build_pkgs
-  do_modify_rootfs
+  do_build_in_docker all
+  do_extra_config
+  do_build_in_docker firmware
   do_out_images
+  do_sdcard_flash
 fi

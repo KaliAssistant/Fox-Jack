@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+start() {
+    /usr/bin/modswitchd
+    sleep 1
+    case "$(cat /dev/shm/modswitch)" in
+        0) /etc/init.d/modswitchd/MOD0.sh & ;;
+        1) /etc/init.d/modswitchd/MOD1.sh & ;;
+        2) /etc/init.d/modswitchd/MOD2.sh & ;;
+        3) /etc/init.d/modswitchd/MOD3.sh & ;;
+        *) exit 1;;
+    esac
+}
+
+stop() {
+    kill -TERM "$(cat /var/run/modswitchd.lock)"
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+case $1 in 
+    start)    start ;;
+    stop)     stop  ;;
+    restart)  restart ;;
+    *)  echo "Usage: $0 {start|stop|restart}"  ;;
+esac

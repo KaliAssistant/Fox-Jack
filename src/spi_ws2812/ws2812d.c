@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <linux/spi/spidev.h>
 #include <sys/ioctl.h>
+#include <linux/gpio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/file.h>  // for flock()
 
 
 #define SPI_DEV "/dev/spidev0.0"
@@ -19,53 +21,23 @@
 #define SPI_BITS 8
 #define SHM_PATH "/dev/shm/led_rgb"
 #define DELAY_US 2000
+#define POWER_PIN_GPIOCHIP "/dev/gpiochip2"
+#define POWER_PIN_GPIOCHIP_BASE 64
 #define POWER_PIN 72  // 72 --> gpio2_b0_d (17)
+
+int POWER_PIN_GPIO_LINE_OFFEST = (POWER_PIN - POWER_PIN_GPIOCHIP_BASE);
 
 // Lookup table for WS2812 1-bit -> 3 SPI bits
 const uint8_t ws2812_lookup[2] = { 0b100, 0b110 };  // 0 = 100, 1 = 110
 
 
-int export_led_pwr_pin() {
-    FILE *export_file = fopen("/sys/class/gpio/export", "w");
-    if (export_file == NULL) {
-        perror("Failed to open GPIO export file");
-        return -1;
-    }
-    fprintf(export_file, "%d", POWER_PIN);
-    fclose(export_file);
+static volatile int keep_running = 1;
 
-    char direction_path[50];
-    snprintf(direction_path, sizeof(direction_path), "/sys/class/gpio/gpio%d/direction", POWER_PIN);
-    FILE *direction_file = fopen(direction_path, "w");
-    if (direction_file == NULL) {
-        perror("Failed to open GPIO direction file");
-        return -1;
-    }
-    fprintf(direction_file, "out");
-    fclose(direction_file);
-
-    char value_path[50];
-    snprintf(value_path, sizeof(value_path), "/sys/class/gpio/gpio%d/value", POWER_PIN);
-    FILE *value_file = fopen(value_path, "w");
-    if (value_file == NULL) {
-        perror("Failed to open GPIO value file");
-        return -1;
-    }
-    fprintf(value_file, "1");
-    fclose(value_file);
-    return 0;
+void handle_sigint(int sig) {
+    (void)sig;
+    keep_running = 0;
 }
 
-int unexport_led_pwr_pin() {
-    FILE *unexport_file = fopen("/sys/class/gpio/unexport", "w");
-    if (unexport_file == NULL) {
-        perror("Failed to open GPIO unexport file");
-        return -1;
-    }
-    fprintf(unexport_file, "%d", POWER_PIN);
-    fclose(unexport_file);
-    return 0;
-}
 
 uint8_t *init_led_shm() {
     int fd = open(SHM_PATH, O_RDWR | O_CREAT, 0666);
@@ -140,6 +112,24 @@ void send_led(int spi_fd, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 int main() {
+    int lock_fd = open("/var/run/ws2812d.lock", O_CREAT | O_RDWR, 0644);
+    if (lock_fd < 0) {
+        perror("open lock file");
+        return 1;
+    }
+
+    // Try to acquire exclusive lock (non-blocking)
+    if (flock(lock_fd, LOCK_EX | LOCK_NB) < 0) {
+        if (errno == EWOULDBLOCK) {
+            fprintf(stderr, "Another instance is already running.\n");
+            return 1;
+        } else {
+            perror("flock");
+            return 1;
+        }
+    }
+
+    
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -156,6 +146,10 @@ int main() {
         perror("setsid failed");
         return 1;
     }
+    
+    // Optional: Write PID to file
+    ftruncate(lock_fd, 0);
+    dprintf(lock_fd, "%d\n", getpid());
 
     // Redirect stdio to /dev/null
     close(0); close(1); close(2);
@@ -166,11 +160,39 @@ int main() {
     // Optionally change working dir
     chdir("/");
     
-    int init_led_power = export_led_pwr_pin();
-    if (init_led_power != 0) return 1;
-
     uint8_t *rgb = init_led_shm();
     if (!rgb) return 1;
+
+    int chip_fd = open(POWER_PIN_GPIOCHIP, O_RDONLY);
+    if (chip_fd < 0) {
+        perror("open gpiochip");
+        return 1;
+    }
+
+    struct gpiohandle_request req;
+    memset(&req, 0, sizeof(req));
+    req.lineoffsets[0] = POWER_PIN_GPIO_LINE_OFFEST;              // GPIO line offset in the chip
+    req.flags = GPIOHANDLE_REQUEST_OUTPUT;
+    req.default_values[0] = 0;
+    req.lines = 1;
+
+    if (ioctl(chip_fd, GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
+        perror("GPIO_GET_LINEHANDLE_IOCTL");
+        close(chip_fd);
+        return 1;
+    }
+
+    close(chip_fd);  
+    
+    signal(SIGINT, handle_sigint);
+
+    struct gpiohandle_data g_data = { .values[0] = 1 }; //POWER ON
+
+    if (ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &g_data) < 0) {
+        perror("GPIOHANDLE_SET_LINE_VALUES_IOCTL");
+        close(req.fd);
+        return 1;
+    }
 
 
     int spi_fd = open(SPI_DEV, O_WRONLY);
@@ -188,7 +210,7 @@ int main() {
     // Background loop
     uint8_t last_rgb[3] = {255, 255, 255};  // force initial update
 
-    while (1) {
+    while (keep_running) {
         if (memcmp(rgb, last_rgb, 3) != 0) {
             memcpy(last_rgb, rgb, 3);
             send_led(spi_fd, rgb[0], rgb[1], rgb[2]);
@@ -199,8 +221,15 @@ int main() {
 
     munmap(rgb, 3);
     close(spi_fd);
-    int deinit_led_power = unexport_led_pwr_pin();
-    if (deinit_led_power != 0) return 1;
+  
+    g_data.values[0] = 0; //POWER OFF
+    if (ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &g_data) < 0) {
+        perror("GPIOHANDLE_SET_LINE_VALUES_IOCTL");
+        close(req.fd);
+        return 1;
+    }
+
+    close(req.fd);
 
     return 0;
 }

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+. /etc/usbnet
+
+usbnet_up() {
+  ifconfig usb0 "$USB0_IP" netmask "$USB0_MASK" up
+}
+
+usbnet_down() {
+  ifconfig usb0 down
+}
+
+usbnet_reload() {
+  usbnet_down
+  sleep 0.5
+  usbnet_up
+}
+
+case $1 in
+  start)
+    usbnet_up
+    ;;
+  stop)
+    usbnet_down
+    ;;
+  restart)
+    usbnet_reload
+    ;;
+  *)
+    exit 1
+    ;;
+esac

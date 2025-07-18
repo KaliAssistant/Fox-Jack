@@ -1,5 +1,5 @@
 # ======== CONFIG ========
-TARGETS     = ws2812d shmled
+TARGETS     = modswitchd
 CC          = arm-rockchip830-linux-uclibcgnueabihf-gcc
 CFLAGS      = -static -O3 -Wall -Wextra
 INSTALL_BIN = /usr/bin
@@ -9,18 +9,13 @@ INSTALL_BIN = /usr/bin
 
 all: $(TARGETS)
 
-ws2812d: ws2812d.c
-	$(CC) $(CFLAGS) -o $@ $<
-
-shmled: shmled.c
+modswitchd: modswitchd.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 install: $(TARGETS)
 	mkdir -p $(DESTDIR)$(INSTALL_BIN)
-	install -m 0755 ws2812d $(DESTDIR)$(INSTALL_BIN)/
-	install -m 0755 shmled $(DESTDIR)$(INSTALL_BIN)/
-	cp -r ./etc $(DESTDIR)/
+	install -m 0755 modswitchd $(DESTDIR)$(INSTALL_BIN)/
+	cp -r ./etc/ $(DESTDIR)/
 
 clean:
 	rm -f $(TARGETS)
-

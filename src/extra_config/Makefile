@@ -2,7 +2,7 @@ KCONFIG_CONFIG ?= .config
 DEFCONFIG ?= foxjack_defconfig
 KBUILD_CONF := $(shell which kconfig-conf || which conf)
 KBUILD_MENUCONFIG := $(shell which kconfig-mconf || which menuconfig)
-GEN_SCRIPT := ./gen.sh
+GEN_SCRIPT := ./extra_config.sh
 
 
 .PHONY: all menuconfig defconfig clean
@@ -24,5 +24,3 @@ savedefconfig:
 # Do not touch defconfig; only clean .config
 clean:
 	rm -f .config .config.old
-	rm -rf ../out/extra_config
-	echo > ../out/rmtab

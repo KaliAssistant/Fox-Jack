@@ -6,11 +6,37 @@ config FJXX_INITSRV_TELNET
     bool "telnet"
     default n
 
+if FJXX_INITSRV_TELNET
+choice
+    prompt "telnet enable mode"
+    default FJXX_INITSRV_TELNET_MANUAL
+
+config FJXX_INITSRV_TELNET_ENABLE
+    bool "set the telnet init daemon to enable"
+config FJXX_INITSRV_TELNET_MANUAL
+    bool "set the telnet init daemon to manual startup"
+endchoice
+endif
+
+
 menuconfig FJXX_INITSRV_SSH
     bool "ssh"
     default y
 
 if FJXX_INITSRV_SSH
+choice
+    prompt "sshd enable mode"
+    default FJXX_INITSRV_SSH_MANUAL
+
+config FJXX_INITSRV_SSH_ENABLE
+    bool "set the ssh init daemon to enable"
+config FJXX_INITSRV_SSH_MANUAL
+    bool "set the ssh init daemon to manual startup"
+endchoice
+
+config FJXX_SSH_LISTEN_PORT
+    string "Your SSH Listen port"
+    default "22"
 
 config FJXX_SSH_AUTHKEY_LOGIN_PBK
     string "Your SSH public key"
@@ -31,12 +57,34 @@ config FJXX_INITSRV_SSLH
     bool "sslh"
     default n
 
+if FJXX_INITSRV_SSLH
+choice
+    prompt "sslh enable mode"
+    default FJXX_INITSRV_SSLH_MANUAL
+
+config FJXX_INITSRV_SSLH_ENABLE
+    bool "set the sslh init daemon to enable"
+config FJXX_INITSRV_SSLH_MANUAL
+    bool "set the sslh init daemon to manual startup"
+endchoice
+endif
+
+
 menuconfig FJXX_INITSRV_USB_GADGETS
     bool "USB gadgets"
-    default y
+    default n
+    depends on FJXX_INITSRV_USB_GT_GADGETS=n
 
 if FJXX_INITSRV_USB_GADGETS
+choice
+    prompt "usb-gadgets(raw) enable mode"
+    default FJXX_INITSRV_USB_GADGETS_MANUAL
 
+config FJXX_INITSRV_USB_GADGETS_ENABLE
+    bool "set the usb-gadgats(raw) init daemon to enable"
+config FJXX_INITSRV_USB_GADGETS_MANUAL
+    bool "set the usb-gadgets(raw) init daemon to manual startup"
+endchoice
 
 config FJXX_USB_GADGETS_RNDIS_IPV4_ADDR
     string "Fox-Jack RNDIS IPV4 address"
@@ -51,6 +99,93 @@ config FJXX_USB_GADGETS_RNDIS_DEV_MAC
     default "42:61:64:56:53:00"
 
 endif
+
+menuconfig FJXX_INITSRV_USB_GT_GADGETS
+    bool "USB gadgets using gt"
+    default y
+
+if FJXX_INITSRV_USB_GT_GADGETS
+choice
+    prompt "usb-gadgets(gt) enable mode"
+    default FJXX_INITSRV_USB_GT_GADGETS_MANUAL
+
+config FJXX_INITSRV_USB_GT_GADGETS_ENABLE
+    bool "set the usb-gadgats(gt) init daemon to enable"
+config FJXX_INITSRV_USB_GT_GADGETS_MANUAL
+    bool "set the usb-gadgets(gt) init daemon to manual startup"
+endchoice
+
+config FJXX_INITSRV_USB_GT_USBNET
+    bool "RNDIS USBNET"
+    default y
+if FJXX_INITSRV_USB_GT_USBNET
+choice
+    prompt "RNDIS USBNET(gt) enable mode"
+    default FJXX_INITSRV_USB_GT_USBNET_MANUAL
+
+config FJXX_INITSRV_USB_GT_USBNET_ENABLE
+    bool "set the rndis-usbnet(gt) init daemon to enable"
+config FJXX_INITSRV_USB_GT_USBNET_MANUAL
+    bool "set the rndis-usbnet(gt) init daemon to manual startup"
+endchoice
+
+config FJXX_USB_GT_GADGETS_RNDIS_IPV4_ADDR
+    string "Fox-Jack RNDIS IPV4 address"
+    default "172.32.0.70/24"
+
+endif
+
+config FJXX_USB_GT_GADGETS_RNDIS_HOST_MAC
+    string "Your HOST or PC RNDIS MAC address"
+    default "48:6f:73:76:50:ff"
+
+config FJXX_USB_GT_GADGETS_RNDIS_DEV_MAC
+    string "Fox-Jack RNDIS MAC address"
+    default "42:61:64:56:53:00"
+
+endif
+
+
+config FJXX_INITSRV_ETH_NETWORK_DHCP
+    bool "Init eth0 network via DHCP"
+    default y
+
+if FJXX_INITSRV_ETH_NETWORK_DHCP
+choice
+    prompt "eth0 dhcp enable mode"
+    default FJXX_INITSRV_ETH_NETWORK_DHCP_MANUAL
+
+config FJXX_INITSRV_ETH_NETWORK_DHCP_ENABLE
+    bool "set eth0 dhco init daemon to enable"
+config FJXX_INITSRV_ETH_NETWORK_DHCP_MANUAL
+    bool "set eth0 dhcp init daemon to manual startup"
+endchoice
+endif
+
+
+config FJXX_INITSRV_NTPD
+    bool "Init Network Time Protocol time sync"
+    default y
+
+if FJXX_INITSRV_NTPD
+choice
+    prompt "network time sync enable mode"
+    default FJXX_INITSRV_NTPD_MANUAL
+
+config FJXX_INITSRV_NTPD_ENABLE
+    bool "set ntpd init daemon to enable"
+config FJXX_INITSRV_NTPD_MANUAL
+    bool "set ntpd init daemon to manual startup"
+endchoice
+endif
+
+config FJXX_PHY_WS2812B_DAEMON
+    bool "Enable Fox-Jack WS2812B RGB NEOPIXEL daemon"
+    default y
+
+config FJXX_PHY_GPIO_MODSWITCH_DAEMON
+    bool "Enable Fox-Jack chose payloads via GPIO switch"
+    default y
 
 endmenu
 
