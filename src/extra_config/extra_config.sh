@@ -431,6 +431,13 @@ do_init_modswitchd() {
     fi
 }
 
+do_init_saradc_batd() {
+    if is_enabled FJXX_PHY_SARADC_BAT_DAEMON; then
+        enable_init_script 19batd
+    else
+        disable_init_script 19batd
+    fi
+}
 
 do_copy_motd() {
     cp "$SCRIPT_PATH/motd" "$RK_BUILD_ROOTFS_ROOT_DIR/etc/motd"
@@ -448,6 +455,11 @@ do_install_modswitchd() {
     cd "$SCRIPT_PATH"
 }
 
+do_install_saradc_batd() {
+    cd "${SCRIPT_PATH}/../saradc_batd"
+    make && make install DESTDIR="$RK_BUILD_ROOTFS_ROOT_DIR"
+    cd "$SCRIPT_PATH"
+}
 
 do_install_overlay() {
     cp -r "$SCRIPT_PATH/overlay/"* "$RK_BUILD_ROOTFS_ROOT_DIR"
@@ -467,3 +479,5 @@ do_install_ws2812d
 do_init_ws2812d
 do_install_modswitchd
 do_init_modswitchd
+do_install_saradc_batd
+do_init_saradc_batd

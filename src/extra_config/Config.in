@@ -187,6 +187,9 @@ config FJXX_PHY_GPIO_MODSWITCH_DAEMON
     bool "Enable Fox-Jack chose payloads via GPIO switch"
     default y
 
+config FJXX_PHY_SARADC_BAT_DAEMON
+    bool "Enable realtime battery monitor daemon via 1.8v saradc"
+    default y
 endmenu
 
 endmenu
