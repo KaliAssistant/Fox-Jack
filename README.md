@@ -106,8 +106,9 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
    [0] Buildroot
    Which would you like? [default: 0]: 0
    ```
-   > [!NOTE]
-   > ✅ Just enter `4 / 0 / 0` — **only Luckfox Pico Max** is supported currently.
+
+> [!NOTE]
+> ✅ Just enter `4 / 0 / 0` — **only Luckfox Pico Max** is supported currently.
 
 ---
 
