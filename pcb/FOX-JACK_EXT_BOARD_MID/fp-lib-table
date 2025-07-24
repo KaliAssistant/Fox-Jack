@@ -1,0 +1,6 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Panelization")(type "KiCad")(uri "${KIPRJMOD}/Panelization.pretty")(options "")(descr ""))
+  (lib (name "ICON")(type "KiCad")(uri "${KIPRJMOD}/ICON.pretty")(options "")(descr ""))
+  (lib (name "UUID")(type "KiCad")(uri "${KIPRJMOD}/UUID.pretty")(options "")(descr ""))
+)

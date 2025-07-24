@@ -2,13 +2,25 @@
 
 NAME="PAYLOAD2"
 
+UDISK_IMAGE_FILE=/userdata/udisk.img
+UDISK_IMAGE_MNT=/mnt/udisk
+
 init() {
-    /etc/init.d/M21networkinit start
-    /etc/init.d/M49ntpd start
-    /etc/init.d/M50sshd start
-    /etc/init.d/M50usbgtgadgets start
-    /etc/init.d/M51usbnet start
+    mkdir -p "$UDISK_IMAGE_MNT"
+    mount -o sync,rw,exec -t vfat "$UDISK_IMAGE_FILE" "$UDISK_IMAGE_MNT"
 }
 
-/usr/bin/shmled -c#FFFF00 -lbs50000 &
+run() {
+    for payloads in "$UDISK_IMAGE_MNT"/payloads/mod2.d/E????*.payload; do
+        bash $payloads
+    done
+}
+
+end() {
+    sync; sync; sync
+    umount -lf "$UDISK_IMAGE_MNT"
+}
+
 init
+run
+end

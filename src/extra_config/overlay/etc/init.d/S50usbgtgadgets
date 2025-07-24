@@ -3,12 +3,13 @@
 set -e
 
 LOAD_NAME="g1"
-SCHEME_FILE=/etc/gt/foxjack.scheme
+SCHEME_FILE_DEFAULT="/etc/gt/foxjack.scheme"
 
 gt_init() {
   if [ ! -e /sys/kernel/config/usb_gadget ]; then
     mount -t configfs none /sys/kernel/config
     if [ ! -e /sys/kernel/config/usb_gadget/$LOAD_NAME ]; then
+      [ -n "$SCHEME_FILE" ] && echo "Load custom scheme file: $SCHEME_FILE ." >&2 || SCHEME_FILE="$SCHEME_FILE_DEFAULT"
       /usr/bin/gt load $SCHEME_FILE $LOAD_NAME
       return 0
     fi
@@ -49,6 +50,7 @@ gt_restart() {
 
 case $1 in
   start)
+    SCHEME_FILE="$2"
     gt_init
     ;;
   stop)

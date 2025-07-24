@@ -1,0 +1,6 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "FS8205")(type "KiCad")(uri "${KIPRJMOD}/symbol_lib/FS8205.kicad_sym")(options "")(descr ""))
+  (lib (name "ME2108A33P")(type "KiCad")(uri "${KIPRJMOD}/symbol_lib/ME2108A33P.kicad_sym")(options "")(descr ""))
+  (lib (name "DS04-254-2-02BK-SMT")(type "KiCad")(uri "${KIPRJMOD}/symbol_lib/DS04-254-2-02BK-SMT.kicad_sym")(options "")(descr ""))
+)

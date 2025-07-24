@@ -15,10 +15,15 @@ CONFIG="$1"
 
 
 RK_BUILD_ROOTFS_ROOT_DIR="${SCRIPT_PATH}/../../luckfox-pico/output/out/rootfs_uclibc_rv1106"
+RK_BUILD_USERDATA_UDISK_DIR="${SCRIPT_PATH}/../../luckfox-pico/output/out/userdata"
 
 [ ! -d "$RK_BUILD_ROOTFS_ROOT_DIR" ] && echo "Build rootfs not found!" && exit 1
+[ ! -d "$RK_BUILD_USERDATA_UDISK_DIR" ] && echo "userdata dir not found!" && exit 1
 
 export PATH="$PATH:${SCRIPT_PATH}/../../luckfox-pico/tools/linux/toolchain/arm-rockchip830-linux-uclibcgnueabihf/bin"
+
+USERDATA_UDISK_SIZE=200 # unit: MiB
+
 
 get_config() {
     grep "^CONFIG_$1=" "$CONFIG" | cut -d= -f2 | tr -d '"'
@@ -292,64 +297,15 @@ do_init_usb_gt_gadgets() {
         fi
         HOST_MAC=$(get_config FJXX_USB_GT_GADGETS_RNDIS_HOST_MAC)
         DEV_MAC=$(get_config FJXX_USB_GT_GADGETS_RNDIS_DEV_MAC)
-        cat <<CONFEOF >> "$RK_BUILD_ROOTFS_ROOT_DIR/etc/gt/foxjack.scheme"
-attrs :
-{
-    bcdUSB = 0x200;
-    idVendor = 0x1D6B;
-    idProduct = 0x4C8A;
-};
-os_descs :
-{
-    use = 1;
-    qw_sign = "MSFT100";
-    b_vendor_code = 0xcd;
-};
+        SERIAL_NUMBER=$(head -c 16 /dev/urandom | xxd -p -u | tr -d '\n')
 
-strings = (
-    {
-        lang = 0x409;
-        manufacturer = "KALIASSISTANT";
-        product = "FOX-JACK V1.0 JACK/LANTAP";
-        serialnumber = "A9418F850B3AE00E57DBDD04577264E2";
-    }
-);
-functions :
-{
-    rndis_usb0 : 
-    {
-        instance = "usb0";
-        type = "rndis";
-        os_descs = (
-            {
-                interface = "rndis";
-                compatible_id = "RNDIS";
-                sub_compatible_id = "5162001";
-            });
-        attrs :
-        {
-            dev_addr = "$DEV_MAC";
-            host_addr = "$HOST_MAC";
-        };
-    };
-};
+        sed -i \
+        -e "s/serialnumber = \".*\"/serialnumber = \"$SERIAL_NUMBER\"/" \
+        -e "s/dev_addr = \".*\"/dev_addr = \"$DEV_MAC\"/" \
+        -e "s/host_addr = \".*\"/host_addr = \"$HOST_MAC\"/" \
+        "$RK_BUILD_ROOTFS_ROOT_DIR/etc/gt/default-rndis.scheme" \
+        "$RK_BUILD_ROOTFS_ROOT_DIR/etc/gt/debug.scheme"
 
-configs = (
-    {
-        id = 1;
-        name = "c";
-        attrs :
-        {
-            bmAttributes = 0x80;
-            bMaxPower = 250;
-        };
-        functions = (
-            {
-                name = "rndis.usb0";
-                function = "rndis_usb0";
-            });
-    } );
-CONFEOF
     else
         disable_init_script 50usbgtgadgets
     fi
@@ -443,6 +399,22 @@ do_copy_motd() {
     cp "$SCRIPT_PATH/motd" "$RK_BUILD_ROOTFS_ROOT_DIR/etc/motd"
 }
 
+do_mk_udisk() {
+    dd if=/dev/zero of="$RK_BUILD_USERDATA_UDISK_DIR/udisk.img" bs=1M count=$USERDATA_UDISK_SIZE
+    mkfs.vfat -F 32 -n "FOX-JACK" "$RK_BUILD_USERDATA_UDISK_DIR/udisk.img"
+    sync
+    MNT_TMPDIR=$(mktemp -d /tmp/mnt.XXXXXXXXXX)
+    mount -o loop "$RK_BUILD_USERDATA_UDISK_DIR/udisk.img" "$MNT_TMPDIR"
+    cd "${SCRIPT_PATH}"
+    tar zxvf udisk.tar.gz
+    cd "$MNT_TMPDIR"
+    cp -r "${SCRIPT_PATH}/udisk/"* .
+    sync
+    umount -lf "$RK_BUILD_USERDATA_UDISK_DIR/udisk.img"
+    rmdir "$MNT_TMPDIR"
+    cd "${SCRIPT_PATH}"
+}
+
 do_install_ws2812d() {
     cd "${SCRIPT_PATH}/../spi_ws2812"
     make && make install DESTDIR="$RK_BUILD_ROOTFS_ROOT_DIR"
@@ -481,3 +453,4 @@ do_install_modswitchd
 do_init_modswitchd
 do_install_saradc_batd
 do_init_saradc_batd
+do_mk_udisk

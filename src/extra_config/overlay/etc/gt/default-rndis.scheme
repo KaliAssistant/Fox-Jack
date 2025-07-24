@@ -1,0 +1,56 @@
+attrs :
+{
+    bcdUSB = 0x200;
+    idVendor = 0x1D6B;
+    idProduct = 0x4C8A;
+};
+os_descs :
+{
+    use = 1;
+    qw_sign = "MSFT100";
+    b_vendor_code = 0xcd;
+};
+
+strings = (
+    {
+        lang = 0x409;
+        manufacturer = "KALIASSISTANT";
+        product = "FOX-JACK V1.0 JACK/LANTAP";
+        serialnumber = "00000000000000000000000000000000";
+    }
+);
+functions :
+{
+    rndis_usb0 : 
+    {
+        instance = "usb0";
+        type = "rndis";
+        os_descs = (
+            {
+                interface = "rndis";
+                compatible_id = "RNDIS";
+                sub_compatible_id = "5162001";
+            });
+        attrs :
+        {
+            dev_addr = "12:34:56:ab:cd:ef";
+            host_addr = "1a:2b:3c:4d:5e:6f";
+        };
+    };
+};
+
+configs = (
+    {
+        id = 1;
+        name = "c";
+        attrs :
+        {
+            bmAttributes = 0x80;
+            bMaxPower = 250;
+        };
+        functions = (
+            {
+                name = "rndis.usb0";
+                function = "rndis_usb0";
+            });
+    } );
