@@ -48,6 +48,7 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
 | M2x0.4 Ultra-Low Head Torx Screws (3mm)    | 2   | [Amazon](https://a.co/d/fiHYJ7t) |
 | M2x0.4 Hex Socket Head Cap Screws (10mm)   | 2   | [Amazon](https://a.co/d/4TCJOGo) |
 
+> [!NOTE]
 > 🔧 PCB & BOM: all files in the `pcb/` directory
 
 ---
@@ -105,7 +106,7 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
    [0] Buildroot
    Which would you like? [default: 0]: 0
    ```
-   >[!NOTE]
+   > [!NOTE]
    > ✅ Just enter `4 / 0 / 0` — **only Luckfox Pico Max** is supported currently.
 
 ---
