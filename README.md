@@ -74,8 +74,9 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
 2. Install required dependencies:
 
    ```bash
+   sudo ./dep.sh
    sudo apt update
-   sudo apt install docker.io kconfig-frontends
+   sudo apt install -y docker.io kconfig-frontends
    ```
    
 3. Clone the repository:
@@ -93,7 +94,7 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
 5. Run the build script:
 
    ```bash
-   ./build.sh all
+   sudo ./build.sh all
    ```
 
    You will see the SDK's *lunch menu*:
@@ -126,21 +127,21 @@ You can tweak build options using the following:
 * **Buildroot menuconfig**:
 
   ```bash
-  ./build.sh luckfox buildrootconfig
+  sudo ./build.sh luckfox buildrootconfig
   ```
   ![](./doc/buildrootconfig.png)
 
 * **Kernel menuconfig**:
 
   ```bash
-  ./build.sh luckfox kernelconfig
+  sudo ./build.sh luckfox kernelconfig
   ```
   ![](./doc/kernelconfig.png)
 
 * **Foxjack extra config (e.g., SSH key, services)**:
 
   ```bash
-  ./build.sh foxjackconfig
+  sudo ./build.sh foxjackconfig
   ```
   ![](./doc/foxjackconfig.png)
 
@@ -159,7 +160,7 @@ To access via **USB RNDIS**, make sure your host PC has a static IP in the same 
 Once the build is complete, flash the image:
 
 ```bash
-./build.sh sdflash
+sudo ./build.sh sdflash
 ```
 
 You'll see:
