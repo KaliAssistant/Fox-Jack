@@ -71,19 +71,26 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
 1. Create a Debian/Ubuntu/Kali (or other Debian-based) Linux environment
    *(You can use a VM or physical machine — author uses a Debian laptop)*
 
-2. Clone the repository:
+2. Install required dependencies:
+
+   ```bash
+   sudo apt update
+   sudo apt install docker.io kconfig-frontends
+   ```
+   
+3. Clone the repository:
 
    ```bash
    git clone https://github.com/KaliAssistant/Fox-Jack.git
    ```
 
-3. Navigate into the repo:
+4. Navigate into the repo:
 
    ```bash
    cd Fox-Jack
    ```
 
-4. Run the build script:
+5. Run the build script:
 
    ```bash
    ./build.sh all
@@ -139,7 +146,7 @@ You can tweak build options using the following:
 
 > [!NOTE]
 > **Security Note:**
-> Default root password is `foxjack`, but **SSH password login is disabled** for security.
+> Default root password is `foxjack`, but **SSH password login is disabled** (`PermitRootLogin prohibit-password`) for security.
 > Add your public key via `foxjackconfig`.
 > If you need password login, modify `/etc/ssh/sshd_config` in rootfs manually.
 
