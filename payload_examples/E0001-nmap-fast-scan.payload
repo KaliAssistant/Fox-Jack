@@ -1,0 +1,265 @@
+#!/bin/bash
+if [ yes != "$STDBUF" ]; then
+    STDBUF=yes /usr/bin/stdbuf -i0 -o0 -e0 "$0"
+    exit $?
+fi
+
+set -eEuo pipefail
+
+# Constants
+readonly NAME="nmap-fast-scan"
+readonly DHCP_TRY=30
+readonly TEST_PING_INTERNET_ADDR="1.1.1.1"
+readonly NMAP_XSL_FILE="/usr/share/nmap/nmap.xsl"
+readonly PAYLOAD_LOOT_PREFIX="${NAME}-$(head -c 12 /dev/urandom | xxd -p)"
+readonly LOOT_BASE_DIR="/mnt/udisk/loot"
+readonly LOOT_DIR="${LOOT_BASE_DIR}/${PAYLOAD_LOOT_PREFIX}"
+readonly NMAP_OPTIONS="-F -Pn -v"
+readonly LOW_BAT_PERCENT=10
+readonly LED_BIN_PATH="/mnt/udisk/data/led_bin"
+
+readonly NTP_SERVERS=(
+    "0.debian.pool.ntp.org"
+    "1.debian.pool.ntp.org"
+    "2.debian.pool.ntp.org"
+    "3.debian.pool.ntp.org"
+)
+
+# Globals
+IPV4_ADDR=""
+IPV4_CIDR=""
+IPV4_MASK=""
+IPV4_NETADDR=""
+IPV4_BRDADDR=""
+IPV6_LINKLOCAL=""
+IPV6_CIDR=""
+HAVE_INTERNET="no"
+NTPD_UPDATE_OK="no"
+
+
+# Simple shmled daemon
+LED() {
+    pkill -f "shmled" || true
+    nohup shmled $@ >/dev/null 2>&1 < /dev/null &
+}
+
+
+
+# Background battery monitor
+battery_monitor() {
+    main_process=$1
+    while true; do
+        read -r BAT_LINE < /dev/shm/bat
+        BAT_PERCENT=$(echo "$BAT_LINE" | cut -d'%' -f1)
+
+        if (( BAT_PERCENT < LOW_BAT_PERCENT )); then
+            echo "[BAT_MONITOR] Battery low: ${BAT_PERCENT}%" | ts "%b %d %Y %T:" >> "$LOOT_DIR/log"
+            kill -SIGUSR1 $main_process
+            break
+        fi
+
+        sleep 5
+    done
+}
+
+
+# Error handler
+err_exit() {
+    local exit_code=$?
+    local src_file=${BASH_SOURCE[1]}
+    local src_line=${BASH_LINENO[0]}
+
+    # Prevent re-entry
+    trap - ERR SIGINT SIGTERM
+    if [ -n "${FLAG_ERR_EXIT:-}" ]; then return; fi
+    FLAG_ERR_EXIT=1
+
+    set +eE
+    LED -c#FF0000 -lbs500000
+    echo "[ERR_EXIT] Trap caught! Exit code $exit_code in $src_file:$src_line" | ts "%b %d %Y %T:" >> "$LOOT_DIR/log"
+    echo "============================== PAYLOAD ERROR ==============================" >> "$LOOT_DIR/log"
+
+    exit 1
+}
+
+# Low battery handler
+low_bat_exit() {
+    trap - USR1  # prevent recursion
+    if [ -n "${FLAG_LOW_BAT_EXIT:-}" ]; then return; fi
+    FLAG_LOW_BAT_EXIT=1
+
+    set +eE       # disable ERR trap
+    LED -l -i "${LED_BIN_PATH}/low_batt.bin" -s 1000000
+    kill -TERM "$NMAP_PID" || true
+
+    echo "[LOW_BATT] Battery too low, exiting..." | ts "%b %d %Y %T:" >> "$LOOT_DIR/log"
+    echo "=========================== PAYLOAD LOW BATTERY ===========================" >> "$LOOT_DIR/log"
+    exit 255       # non-zero code, but will NOT trigger err_exit now
+}
+
+
+# Convert CIDR to netmask
+cidr_to_netmask() {
+    local bits=$1 mask="" i=0
+    while [ $i -lt 4 ]; do
+        if [ $bits -ge 8 ]; then
+            mask="$mask.255"
+            bits=$((bits - 8))
+        elif [ $bits -gt 0 ]; then
+            mask="$mask.$(( 256 - 2**(8 - bits) ))"
+            bits=0
+        else 
+            mask="$mask.0"
+        fi
+        i=$((i + 1))
+    done
+    echo "${mask#.}"
+}
+
+ip_to_int() {
+    local IFS=.
+    read -r a b c d <<< "$1"
+    echo $(( (a << 24) + (b << 16) + (c << 8) + d ))
+}
+
+int_to_ip() {
+    local ip=$1
+    echo "$(( (ip >> 24) & 255 )).$(( (ip >> 16) & 255 )).$(( (ip >> 8) & 255 )).$(( ip & 255 ))"
+}
+
+get_ip_info() {
+    local iface="${1:-eth0}"
+
+    local ip_cidr
+    ip_cidr=$(ip -4 addr show dev "$iface" | awk '/inet / {print $2}')
+    if [[ -n "$ip_cidr" ]]; then
+        IPV4_ADDR=${ip_cidr%/*}
+        IPV4_CIDR=${ip_cidr#*/}
+        IPV4_MASK=$(cidr_to_netmask "$IPV4_CIDR")
+        local ip_int mask_int net_int brd_int
+        ip_int=$(ip_to_int "$IPV4_ADDR")
+        mask_int=$(ip_to_int "$IPV4_MASK")
+        net_int=$((ip_int & mask_int))
+        brd_int=$((net_int | (~mask_int & 0xFFFFFFFF)))
+        IPV4_NETADDR=$(int_to_ip "$net_int")
+        IPV4_BRDADDR=$(int_to_ip "$brd_int")
+    fi
+
+    local ipv6_info
+    ipv6_info=$(ip -6 addr show dev "$iface" | awk '/inet6 fe80/ {print $2}' | head -n1)
+    if [[ -n "$ipv6_info" ]]; then
+        IPV6_LINKLOCAL=${ipv6_info%/*}
+        IPV6_CIDR=${ipv6_info#*/}
+    fi
+}
+
+wait_eth0() {
+    LED -c#FFFF00 -lds300000
+    ip link set eth0 up
+    
+
+    echo "[WAIT_ETH][INFO] Waiting for RJ45 cable plug (eth0 up)..."
+    while true; do
+        ETH_STATUS="$(cat /sys/class/net/eth0/operstate)"
+        if [ "$ETH_STATUS" = "up" ]; then
+            break
+        fi
+        sleep 1
+    done
+    
+    echo "[WAIT_ETH][INFO] Link is up. Waiting for dhcp address..."
+    # Start DHCP
+    udhcpc -R -b -p /var/run/udhcpc.eth0.pid -i eth0
+
+    # Wait for IP address
+    for i in $(seq 1 "$DHCP_TRY"); do
+        get_ip_info eth0
+        if [ -n "$IPV4_ADDR" ]; then
+            break
+        fi
+        sleep 1
+    done
+
+    # Check if IP was acquired
+    if [ -z "$IPV4_ADDR" ]; then
+        echo "[WAIT_ETH][FAIL] Error get the ip address via dhcp... abort!" >&2
+        return 1
+    fi
+    echo "[WAIT_ETH][INFO] Get ip address successful."
+}
+
+init() {
+    LED -c#FFFF00 -lbs500000
+
+    if ping -qw2 "$TEST_PING_INTERNET_ADDR"; then
+        HAVE_INTERNET="yes"
+        echo "[PING][SUCCESS] Ping $TEST_PING_INTERNET_ADDR successful, Now trying to update datetime via NTP server..."
+        
+        for server in "${NTP_SERVERS[@]}"; do
+            echo "[SNTP][INFO] Trying NTP server: $server"
+            if sntp -4 -S "$server"; then
+                echo "[SNTP][SUCCESS] Synced with $server"
+                NTPD_UPDATE_OK="yes"
+                return
+            else
+                echo "[SNTP][FAIL] $server failed!"
+            fi
+        done
+        echo "[SNTP][NOSYNC] Time synchronization failed. Subsequent log timestamps may be inaccurate."
+        return
+    else
+        echo "[PING][FAIL] Ping $TEST_PING_INTERNET_ADDR failed. The payload will running without Internet connection." >&2
+    fi
+}
+
+main() {
+    LED -c#FF0000 -lbs50000
+    get_ip_info eth0
+    echo "[MAIN][INFO] Starting nmap with optinos: $NMAP_OPTIONS ..."
+    nmap $NMAP_OPTIONS "${IPV4_ADDR}/${IPV4_CIDR}" --exclude "$IPV4_ADDR" -oA "$LOOT_DIR/nmap" --stylesheet "$NMAP_XSL_FILE" &
+    NMAP_PID=$!
+    wait $NMAP_PID
+}
+
+
+# Main flow
+trap err_exit SIGINT SIGTERM ERR
+trap low_bat_exit USR1
+
+mkdir -p "$LOOT_DIR"
+
+echo "PAYLOAD_NAME=$NAME" >> "$LOOT_DIR/log"
+echo "============================== PAYLOAD START ==============================" >> "$LOOT_DIR/log"
+
+exec > >(ts "%b %d %Y %T:" | tee -a "$LOOT_DIR/log") 2>&1
+
+battery_monitor $$ & # run monitor in background
+
+wait_eth0
+init
+main
+
+{
+    echo "============================= PAYLOAD SUCCESS ============================="
+    echo "IPV4_ADDR=$IPV4_ADDR/$IPV4_CIDR"
+    echo "IPV4_MASK=$IPV4_MASK"
+    echo "IPV4_NETADDR=$IPV4_NETADDR"
+    echo "IPV4_BRDADDR=$IPV4_BRDADDR"
+    echo "IPV6_ADDR=$IPV6_LINKLOCAL/$IPV6_CIDR"
+    echo "HAVE_INTERNET=$HAVE_INTERNET"
+    echo "NTPD_UPDATE_OK=$NTPD_UPDATE_OK"
+} >> "$LOOT_DIR/log"
+
+
+LED -c#00FF00 -lds1000000
+
+
+if [ "$NTPD_UPDATE_OK" == "yes" ]; then
+    mv "$LOOT_DIR" "${LOOT_BASE_DIR}/${NAME}-$(date +%m-%d-%Y-%H%M%S)"
+else
+    mv "$LOOT_DIR" "${LOOT_BASE_DIR}/${NAME}-${PAYLOAD_LOOT_PREFIX}-NONTPSYNC"
+fi
+
+sync
+exit 0
+

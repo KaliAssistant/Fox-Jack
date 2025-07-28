@@ -47,6 +47,8 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
 | M2x0.4 Heat-Set Thread Insert (D3×H2)      | 2   | [Amazon](https://a.co/d/6mJeA5C) |
 | M2x0.4 Ultra-Low Head Torx Screws (3mm)    | 2   | [Amazon](https://a.co/d/fiHYJ7t) |
 | M2x0.4 Hex Socket Head Cap Screws (10mm)   | 2   | [Amazon](https://a.co/d/4TCJOGo) |
+| DIP Switch 1 Positions                     | 1   | [Amazon](https://a.co/d/8rEHPwg) |
+| 302040 Lipo 3.7v battery                   | 1   | [Amazon](https://a.co/d/8rEHPwg) |
 
 > [!NOTE]
 > 🔧 PCB & BOM: all files in the `pcb/` directory
@@ -63,6 +65,24 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
   * Solder paste
   * Solder flux
   * Hot air gun (for SMD components on extension board)
+
+---
+
+## Fox-Jack EXT Board
+
+#### Assembly Notes: [README](./pcb/README.md)
+
+![](./doc/stack_3dview.JPG)
+![](./doc/stack_pcb_ll.JPG)
+
+---
+
+## 3D printable cases
+
+#### see: [README](./3dp/README.md)
+
+![](./doc/CASE0.JPG)
+![](./doc/CASE7.JPG)
 
 ---
 
@@ -170,8 +190,8 @@ WARNING: Check the SD card dev path! blkenvflash can overwrite your system drive
 Enter your SD card dev path (/dev/sxx)... >
 ```
 
->[!WARNING]
->⚠️ **Be careful!** Enter the correct SD card device path to avoid overwriting your OS drive.
+> [!WARNING]
+> **Be careful!** Enter the correct SD card device path to avoid overwriting your OS drive.
 
 ---
 
@@ -209,6 +229,29 @@ In **debug mode** (SW1=0, SW2=0):
 <img src="./doc/debugmode.JPG">
 
 <img src="./doc/dmesg_debug_mode.png">
+
+---
+
+## Payload Examples
+
+#### see [README](./payload_examples/README.md)
+
+Payload filenames must follow this format:
+
+```
+E????-name.payload
+```
+
+* `E????` is a 4-digit payload ID (e.g., `E0000`)
+* `name` is a short, descriptive label
+
+**Example:**
+
+```
+E0000-arp-scan.payload
+```
+
+<img src="./doc/run_payloads.gif" width="100%">
 
 ---
 

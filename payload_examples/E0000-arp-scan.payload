@@ -1,17 +1,29 @@
 #!/bin/bash
+if [ yes != "$STDBUF" ]; then
+    STDBUF=yes /usr/bin/stdbuf -i0 -o0 -e0 "$0"
+    exit $?
+fi
+
 set -eEuo pipefail
 
 # Constants
-readonly NAME="nmap-fast-scan"
-readonly SHMLED_PROCNAME="shmled_runtime"
+readonly NAME="arp-scan"
 readonly DHCP_TRY=30
-readonly NTPD_TRY=30
 readonly TEST_PING_INTERNET_ADDR="1.1.1.1"
-readonly NMAP_XSL_FILE="/usr/share/nmap/nmap.xsl"
 readonly PAYLOAD_LOOT_PREFIX="${NAME}-$(head -c 12 /dev/urandom | xxd -p)"
 readonly LOOT_BASE_DIR="/mnt/udisk/loot"
 readonly LOOT_DIR="${LOOT_BASE_DIR}/${PAYLOAD_LOOT_PREFIX}"
-readonly NMAP_OPTIONS="-F -Pn -v"
+readonly ARP_SCAN_OPTIONS=(-Dldgx -Y60 -r4 -t1000)
+readonly ARP_SCAN_OUT_FORMAT='${ip}\t${mac}\t${vendor}\t${name}\t${rtt}' 
+readonly LED_BIN_PATH="/mnt/udisk/data/led_bin"
+
+readonly NTP_SERVERS=(
+    "0.debian.pool.ntp.org"
+    "1.debian.pool.ntp.org"
+    "2.debian.pool.ntp.org"
+    "3.debian.pool.ntp.org"
+)
+
 
 # Globals
 IPV4_ADDR=""
@@ -24,20 +36,32 @@ IPV6_CIDR=""
 HAVE_INTERNET="no"
 NTPD_UPDATE_OK="no"
 
+
+# Simple shmled daemon
+LED() {
+    pkill -f "shmled" || true
+    nohup shmled $@ >/dev/null 2>&1 < /dev/null &
+}
+
+
 # Error handler
 err_exit() {
     local exit_code=$?
     local src_file=${BASH_SOURCE[1]}
     local src_line=${BASH_LINENO[0]}
 
+    # Prevent re-entry
+    trap - ERR SIGINT SIGTERM
+    if [ -n "${FLAG_ERR_EXIT:-}" ]; then return; fi
+    FLAG_ERR_EXIT=1
+
     set +eE
-    killall -9 "$SHMLED_PROCNAME" 2>/dev/null || true
-    nohup shmled -c#FF0000 -lbs500000 >/dev/null 2>&1 &
-    echo "[ERR_EXIT] Trap caught! Exit code $exit_code in $src_file:$src_line" | tee -a "$LOOT_DIR/log"
-    echo "============================== PAYLOAD ERROR ==============================" | tee -a "$LOOT_DIR/log"
+    LED -c#FF0000 -lbs500000
+    echo "[ERR_EXIT] Trap caught! Exit code $exit_code in $src_file:$src_line" | ts "%b %d %Y %T:" >> "$LOOT_DIR/log"
+    echo "============================== PAYLOAD ERROR ==============================" >> "$LOOT_DIR/log"
+
     exit 1
 }
-
 
 # Convert CIDR to netmask
 cidr_to_netmask() {
@@ -94,14 +118,13 @@ get_ip_info() {
     fi
 }
 
-wait_eth0() {
-    (exec -a "$SHMLED_PROCNAME" shmled -c#FFFF00 -lds300000) &
-    ip link set eth0 up
 
-    # Start LED blink to indicate waiting
+wait_eth0() {
+    LED -c#FFFF00 -lds300000
+    ip link set eth0 up
     
 
-    echo "[wait_eth0] Waiting for RJ45 cable plug (eth0 up)..."
+    echo "[WAIT_ETH][INFO] Waiting for RJ45 cable plug (eth0 up)..."
     while true; do
         ETH_STATUS="$(cat /sys/class/net/eth0/operstate)"
         if [ "$ETH_STATUS" = "up" ]; then
@@ -110,7 +133,7 @@ wait_eth0() {
         sleep 1
     done
     
-    echo "[wait_eth0] Link is up. Waiting for dhcp address..."
+    echo "[WAIT_ETH][INFO] Link is up. Waiting for dhcp address..."
     # Start DHCP
     udhcpc -R -b -p /var/run/udhcpc.eth0.pid -i eth0
 
@@ -123,67 +146,61 @@ wait_eth0() {
         sleep 1
     done
 
-    # Stop LED blink
-    killall "$SHMLED_PROCNAME" 2>/dev/null || true
-
     # Check if IP was acquired
     if [ -z "$IPV4_ADDR" ]; then
-        echo "[wait_eth0] Error get the ip address via dhcp... abort!" >&2
+        echo "[WAIT_ETH][FAIL] Error get the ip address via dhcp... abort!" >&2
         return 1
     fi
-    echo "[wait_eth0] Get ip address successful."
+    echo "[WAIT_ETH][INFO] Get ip address successful."
 }
 
 init() {
+    LED -c#FFFF00 -lbs500000
+
     if ping -qw2 "$TEST_PING_INTERNET_ADDR"; then
         HAVE_INTERNET="yes"
-        echo "Ping $TEST_PING_INTERNET_ADDR successful, Now trying to update datetime via NTP server..."
-
-        # Launch ntpd in background
-        ntpd -4gqn -I eth0 &
-        NTPD_PID=$!
-
-        # Wait up to 5 seconds for it to exit
-        for i in $(seq 1 "$NTPD_TRY"); do
-            if ! kill -0 "$NTPD_PID" 2>/dev/null; then
-                wait "$NTPD_PID" && NTPD_UPDATE_OK="yes"
-                echo "Datetime update successful. Time: `date -u`"
+        echo "[PING][SUCCESS] Ping $TEST_PING_INTERNET_ADDR successful, Now trying to update datetime via NTP server..."
+        
+        for server in "${NTP_SERVERS[@]}"; do
+            echo "[SNTP][INFO] Trying NTP server: $server"
+            if sntp -4 -S "$server"; then
+                echo "[SNTP][SUCCESS] Synced with $server"
+                NTPD_UPDATE_OK="yes"
                 return
+            else
+                echo "[SNTP][FAIL] $server failed!"
             fi
-            sleep 1
         done
-
-        # Timeout reached — kill it
-        kill "$NTPD_PID" 2>/dev/null || true
-        echo "NTPD update timeout! The timestamp may incorrect."
+        echo "[SNTP][NOSYNC] Time synchronization failed. Subsequent log timestamps may be inaccurate."
+        return
     else
-        echo "Ping $TEST_PING_INTERNET_ADDR failed. The payload will running without Internet connection."
+        echo "[PING][FAIL] Ping $TEST_PING_INTERNET_ADDR failed. The payload will running without Internet connection." >&2
     fi
 }
 
 
 main() {
-    (exec -a "$SHMLED_PROCNAME" shmled -c#FF0000 -lbs50000) &
+    LED -c#FF0000 -lbs50000
     get_ip_info eth0
-    echo "Starting nmap with optinos: $NMAP_OPTIONS ..."
-    nmap $NMAP_OPTIONS "${IPV4_ADDR}/${IPV4_CIDR}" -oA "$LOOT_DIR/nmap" --stylesheet "$NMAP_XSL_FILE"
+    echo "[MAIN][INFO] Starting arp-scan with optinos: $ARP_SCAN_OPTIONS ..."
+
+    echo -e "$ARP_SCAN_OUT_FORMAT" | tr -d '${}' > "$LOOT_DIR/arp-scan.csv"
+    arp-scan "${ARP_SCAN_OPTIONS[@]}" -F"$ARP_SCAN_OUT_FORMAT" -I eth0 | tee -a "$LOOT_DIR/arp-scan.csv"
 }
 
 # Main flow
 trap err_exit SIGINT SIGTERM ERR
+
 mkdir -p "$LOOT_DIR"
 
-{
-    echo "PAYLOAD_NAME=$NAME"
-    echo "============================== PAYLOAD START =============================="
-} | tee -a "$LOOT_DIR/log"
+echo "PAYLOAD_NAME=$NAME" >> "$LOOT_DIR/log"
+echo "============================== PAYLOAD START ==============================" >> "$LOOT_DIR/log"
 
+exec > >(ts "%b %d %Y %T:" | tee -a "$LOOT_DIR/log") 2>&1
 
-{
-    wait_eth0
-    init
-    main
-} > >(ts "%b %d %Y %T:" | tee -a "$LOOT_DIR/log") 2>&1
+wait_eth0
+init
+main
 
 {
     echo "============================= PAYLOAD SUCCESS ============================="
@@ -195,17 +212,16 @@ mkdir -p "$LOOT_DIR"
     echo "HAVE_INTERNET=$HAVE_INTERNET"
     echo "NTPD_UPDATE_OK=$NTPD_UPDATE_OK"
 
-    killall "$SHMLED_PROCNAME" 2>/dev/null || true
 
-    nohup shmled -c#00FF00 -lds1000000 >/dev/null 2>&1 &
 
-} | tee -a "$LOOT_DIR/log"
+} >> "$LOOT_DIR/log"
 
+LED -c#00FF00 -lds1000000
 
 if [ "$NTPD_UPDATE_OK" == "yes" ]; then
     mv "$LOOT_DIR" "${LOOT_BASE_DIR}/${NAME}-$(date +%m-%d-%Y-%H%M%S)"
 else
-    mv "$LOOT_DIR" "${LOOT_BASE_DIR}/${NAME}-${PAYLOAD_LOOT_PREFIX}-NONTPSYNC"
+    mv "$LOOT_DIR" "${LOOT_BASE_DIR}/${PAYLOAD_LOOT_PREFIX}-NONTPSYNC"
 fi
 
 sync

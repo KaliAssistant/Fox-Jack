@@ -18,7 +18,7 @@ run() {
 
 end() {
     sync; sync; sync
-    umount -lf "$UDISK_IMAGE_MNT"
+    # umount -lf "$UDISK_IMAGE_MNT"   NOTE: we dont need umount, because mount sync flag set.
 }
 
 init

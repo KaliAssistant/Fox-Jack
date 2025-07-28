@@ -16,7 +16,7 @@ E????-name.payload
 **Example:**
 
 ```
-E0000-nmap-fast-scan.payload
+E0000-arp-scan.payload
 ```
 
 ## How to Use
