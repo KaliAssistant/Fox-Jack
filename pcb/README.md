@@ -9,7 +9,7 @@ Designed with a **stacked PCB layout** inspired by modular smartphones (like iPh
 
 ---
 
-## 📦 Board Structure
+## Board Structure
 
 The extension board is made up of **two stacked PCBs**:
 
@@ -31,7 +31,7 @@ The extension board is made up of **two stacked PCBs**:
 
 ---
 
-## 🔧 Assembly Notes
+## Assembly Notes
 
 > [!NOTE]
 > Soldering requires careful thermal profiling!
@@ -48,7 +48,7 @@ The extension board is made up of **two stacked PCBs**:
 ![](../doc/stack_3dview.JPG)
 ---
 
-## 🔋 Battery Info
+## Battery Info
 
 * Recommended: **Li-ion 3.7V 300mAh**
 * Model: **302040**
@@ -56,7 +56,7 @@ The extension board is made up of **two stacked PCBs**:
 
 ---
 
-## 🧠 ADC Voltage Measurement
+## ADC Voltage Measurement
 
 If you want to **read battery voltage** using the **Pico’s ADC**:
 
@@ -67,7 +67,7 @@ If you want to **read battery voltage** using the **Pico’s ADC**:
 ![](../doc/REMOVE_R57_PCB_LL.JPG)
 ---
 
-## 🛠️ Compatibility with 3D-Printed Case
+## Compatibility with 3D-Printed Case
 
 To fit the extension + Pico board into the provided **3D-printed case**, perform the following hardware mods:
 
@@ -85,11 +85,11 @@ To fit the extension + Pico board into the provided **3D-printed case**, perform
    * 4P is enough for **100 Mbps** **(rv1106g3 gmac only support 100Mbps phy)**
 
 ![](../doc/stack_pcb_ll.JPG)
-![](../doc/CASE_3DVIEWI.png)
+<img src="../doc/CASE_3DVIEWI.png" width="100%">
 
 ---
 
-## 📂 Files Included
+## Files Included
 
 * ✅ KiCad project files (`.kicad_pcb`, `.sch`, etc.)
 * ✅ Gerber + drill files (for fabrication)
@@ -99,7 +99,7 @@ To fit the extension + Pico board into the provided **3D-printed case**, perform
 
 ---
 
-## 🔧 PCB Manufacturing Notes (e.g., JLCPCB)
+## PCB Manufacturing Notes (e.g., JLCPCB)
 
 When ordering:
 
@@ -125,5 +125,4 @@ When ordering:
 
 Licensed under **GNU GPLv3**.
 Feel free to **use**, **study**, **modify**, and **share** under the same license.
-
 

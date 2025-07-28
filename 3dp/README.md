@@ -49,11 +49,8 @@ You can use:
 - Plastic fiber makes LED glow look much better
 - Push fiber into LED holes
 
-<img src="../doc/CASE3.JPG" width="48%">
-<img src="../doc/CASE4.JPG" width="48%">
-
-<img src="../doc/CASE5.JPG" width="48%">
-<img src="../doc/CASE6.JPG" width="48%">
+<img src="../doc/CASE3.JPG" width="48%"> <img src="../doc/CASE4.JPG" width="48%">
+<img src="../doc/CASE5.JPG" width="48%"> <img src="../doc/CASE6.JPG" width="48%">
 
 ---
 
