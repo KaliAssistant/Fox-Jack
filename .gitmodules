@@ -1,4 +1,0 @@
-[submodule "luckfox-pico"]
-	path = luckfox-pico
-	url = https://github.com/KaliAssistant/luckfox-pico
-	branch = foxjack
