@@ -96,7 +96,7 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
    ```bash
    sudo ./dep.sh
    sudo apt update
-   sudo apt install -y docker.io kconfig-frontends
+   sudo apt install -y docker.io kconfig-frontends make cmake automake autoconf libtool libtool-bin rsync
    ```
    
 3. Clone the repository:
