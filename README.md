@@ -48,7 +48,7 @@ Designed for payload delivery, opportunistic wired auditing, and SE engagements,
 | M2x0.4 Ultra-Low Head Torx Screws (3mm)    | 2   | [Amazon](https://a.co/d/fiHYJ7t) |
 | M2x0.4 Hex Socket Head Cap Screws (10mm)   | 2   | [Amazon](https://a.co/d/4TCJOGo) |
 | DIP Switch 1 Positions                     | 1   | [Amazon](https://a.co/d/8rEHPwg) |
-| 302040 Lipo 3.7v battery                   | 1   | [Amazon](https://a.co/d/8rEHPwg) |
+| 302040 Lipo 3.7v battery                   | 1   | [Amazon](https://amzn.eu/d/auT4PZT) |
 
 > [!NOTE]
 > 🔧 PCB & BOM: all files in the `pcb/` directory
